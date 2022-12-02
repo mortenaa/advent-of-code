@@ -1,6 +1,5 @@
 package no.morten.advent.day1
 
-import no.morten.advent.list.LinkedList
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
