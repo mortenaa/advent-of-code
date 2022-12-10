@@ -11,6 +11,18 @@ dependencies {
     implementation(project(":utilities"))
 }
 
+configurations {
+    "implementation" {
+        resolutionStrategy.failOnVersionConflict()
+    }
+}
+
+tasks {
+    named<Test>("test") {
+        testLogging.showExceptions = true
+    }
+}
+
 application {
     // Define the main class for the application.
     mainClass.set("no.morten.advent.app.AppKt")
