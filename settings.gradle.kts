@@ -8,4 +8,4 @@
  */
 
 rootProject.name = "advent-of-code"
-include("app", "list", "utilities")
+include("advent", "utilities")
