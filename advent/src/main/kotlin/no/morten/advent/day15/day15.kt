@@ -26,17 +26,19 @@ fun main() {
     val input = readResourceFile(inputFile)
     val sensors = parse(input)
 
-    val map = HashSet<Point>().toMutableSet()
-    val beacons = HashSet<Point>().toMutableSet()
+    //val map = HashSet<Point>().toMutableSet()
+    //val beacons = HashSet<Point>().toMutableSet()
     //fill(map, Point(10, 10), 3)
     //println(map)
 
-    sensors.forEach { (k, v) ->
-        val d = manhatten(k, v)
-        beacons.add(v)
-        //println("$k -> $v = $d")
-        //fill(map, k, d)
-    }
+//    println(outline(0 to 0, 3))
+//
+//    sensors.forEach { (k, v) ->
+//        val d = manhatten(k, v)
+//        beacons.add(v)
+//        //println("$k -> $v = $d")
+//        //fill(map, k, d)
+//    }
     //fill(map, Point(8,7), 9)
     // ####B######################
     // ####B######################
@@ -46,30 +48,50 @@ fun main() {
     val distance = sensors.map { it.key to manhatten(it.key, it.value) }.toMap()
     // val y = 2000000
 
-     loop@for (y in 0..4000000) {
-         var x = 0
-         println(y)
-         while (x <= 4000000) {
-             //println(x)
-            if (x to y in beacons) {
-                x+=1
-                //print("B")
-            } else if (sensors.containsKey(x to y)) {
-                //print("S")
-                x += (distance[x to y]!!/2).coerceAtLeast(1)
-            } else if (sensors.any { distance[it.key]!! >= manhatten(it.key, x to y) }) {
-                //print("#")
-                x += 1
-            } else {
-                println(x*4000000 + y)
-                break@loop;
-                x +=1
-            }
+    val limit = 4000000
+    var i = 0
+    val canditates = buildSet<Point> {
+        for (s in sensors) {
+            i += 1
+            println(i)
+            addAll(outline(s.key, distance[s.key]!!)
+                .filter { it.x in 0 .. limit && it.y in 0 .. limit }
+                .filter { c ->
+                    sensors.keys.none { s -> manhatten(c, s) <= distance[s]!! }
+                })
         }
-        //println()
     }
+    println("${canditates.size} candidates")
+//    val list = canditates.filter { c ->
+//        sensors.keys.none { s -> manhatten(c, s) <= distance[s]!! }
+//    }
+    println(canditates.map {it.x.toLong()*4000000L + it.y.toLong()})
+    return
+//
+//    loop@for (y in 0..4000000) {
+//         var x = 0
+//         println(y)
+//         while (x <= 4000000) {
+//             //println(x)
+//            if (x to y in beacons) {
+//                x+=1
+//                //print("B")
+//            } else if (sensors.containsKey(x to y)) {
+//                //print("S")
+//                x += (distance[x to y]!!/2).coerceAtLeast(1)
+//            } else if (sensors.any { distance[it.key]!! >= manhatten(it.key, x to y) }) {
+//                //print("#")
+//                x += 1
+//            } else {
+//                println(x*4000000 + y)
+//                break@loop;
+//                x +=1
+//            }
+//        }
+//        //println()
+//    }
 
-    println(count)
+    //println(count)
 // Your handheld device indicates that the distress signal is coming from a beacon nearby. The distress beacon is not
 // detected by any sensor, but the distress beacon must have x and y coordinates each no lower than 0 and no larger than 4000000.
 //
@@ -125,6 +147,27 @@ fun parse(input: String): HashMap<Point, Point> {
     }
     return sensors
 }
+
+//      o               0,-4
+//     0*o          -1,-3  1,-3
+//    0***o         -2,-2  2,-2          x = 0, 0
+//   0*****o        -3,-1  3,-1          d = 3
+//  0***x***o       -4,0   4,0
+//   0*****o        -3,1   3,1
+//    0***o         -2,2   2,2
+//     0*o          -1,3   1,3
+//      0               0,4
+
+fun outline(p: Point, d: Int) =
+    buildSet {
+        for (i in 0..d + 1) {
+            val j = d - i + 1
+            add(p.x - i to p.y - j)
+            add(p.x - i to p.y + j)
+            add(p.x + i to p.y - j)
+            add(p.x + i to p.y + j)
+        }
+    }
 
 fun manhatten(p1: Point, p2: Point) =
     abs(p1.x - p2.x) + abs(p1.y - p2.y)
