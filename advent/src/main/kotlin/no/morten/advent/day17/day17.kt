@@ -4,47 +4,52 @@ import no.morten.advent.util.readResourceFile
 import java.util.*
 import kotlin.math.max
 
+data class Pattern(val rock: Long, val move: Long, val num: Long, val height: Long)
 
 fun main() {
-    val inputFile = "day17_test.txt"
-    //val inputFile = "day17.txt"
+    //val inputFile = "day17_test.txt"
+    val inputFile = "day17.txt"
     val input = readResourceFile(inputFile)
     val moves = parseMoves(input)
 
     val map = emptySet<Pair<Int, Long>>().toMutableSet()
 
-    val shapes = listOf (
-        listOf(0 to 0L, 1 to 0L, 2 to 0L, 3 to 0L),           // -
-        listOf(1 to 0L, 0 to 1L, 1 to 1L, 2 to 1L, 1 to 2L),  // +
-        listOf(0 to 0L, 1 to 0L, 2 to 0L, 2 to 1L, 2 to 2L),  // _|
-        listOf(0 to 0L, 0 to 1L, 0 to 2L, 0 to 3L),           // |
-        listOf(0 to 0L, 1 to 0L, 0 to 1L, 1 to 1L)            // o
+    val shapes = arrayListOf (
+        arrayListOf(0 to 0L, 1 to 0L, 2 to 0L, 3 to 0L),           // -
+        arrayListOf(1 to 0L, 0 to 1L, 1 to 1L, 2 to 1L, 1 to 2L),  // +
+        arrayListOf(0 to 0L, 1 to 0L, 2 to 0L, 2 to 1L, 2 to 2L),  // _|
+        arrayListOf(0 to 0L, 0 to 1L, 0 to 2L, 0 to 3L),           // |
+        arrayListOf(0 to 0L, 1 to 0L, 0 to 1L, 1 to 1L)            // o
     )
 
     var top = -1L
-    var j = 0
-    loop@for (i in 0 until 1000000000000L) {
-    //loop@for (i in 0 until 2022) {
+    var j = 0L
+    val target = 1000000000000L
+    val pattern = emptyList<Pattern>().toMutableList()
+    loop@for (i in 0 until target) {
+    //loop@for (i in 0 until 2022L) {
         val x = 2
         val y = top + 4
         var s = (shapes[(i % 5).toInt()]).at(x, y)
 
         var stopped = false
+        var move = ' '
+        var newS = listOf(0 to 0L)
         while (!stopped) {
-            var move = if (j % 2 == 0) moves[(j/2) % moves.size] else 'v'
+            move = if (j % 2L == 0L) moves[(j/2).toInt() % moves.size] else 'v'
             when (move) {
                 '<' -> {
-                    val newS = s.left()
+                    newS = s.left()
                     if (newS.none() { it.first < 0 } && newS.none { it in map })
                         s = newS
                 }
                 '>' -> {
-                    val newS = s.right()
+                    newS = s.right()
                     if (newS.none() { it.first > 6} && newS.none { it in map })
                         s = newS
                 }
                 else -> {
-                    val newS = s.down()
+                    newS = s.down()
                     if (newS.none() { it.second < 0} && newS.none { it in map }) {
                         s = newS
                     } else {
@@ -63,6 +68,24 @@ fun main() {
                             map.removeAll { it.second < max - 2 }
                         }
                         top = max(top, max)
+                        pattern.add(Pattern(i % 5, j % moves.size, i, top))
+                        val p = pattern.last()
+                        val matches = pattern.filter { it.rock == p.rock && it.move == p.move }
+                        if (matches.size > 2) {
+                            val l = matches.size-1
+                            if (matches[l].height - matches[l-1].height == matches[l-1].height - matches[l-2].height) {
+                                println("Patern at ${matches[l]} - ${matches[l-1]}: ${matches[l].height - matches[l-1].height}")
+                                val diff = matches[l].height - matches[l-1].height
+                                val cycle = matches[l].num - matches[l-1].num
+                                val remaining = target - i
+
+                                if (remaining % cycle == 0L) {
+                                    val total = top + (remaining / cycle) * diff
+                                    println("total $total")
+                                    return
+                                }
+                            }
+                        }
                         stopped = true
                         //println("top: $top")
                     }
@@ -73,8 +96,9 @@ fun main() {
             //printMap(map + s, top + 7)
         }
         //  1000000000000L
-        if (i % 100000000L == 0L)
-            println(i)
+        //      300000000L
+        if (i % 10000000L == 0L)
+            println("$i: ${map.size}")
         //println("$i: ${top+1}")
 
     }
