@@ -3,11 +3,14 @@ package no.morten.advent.day19
 import no.morten.advent.day16.Room
 import no.morten.advent.util.readResourceFile
 import java.lang.IllegalStateException
+import kotlin.math.max
 
+val timeSteps = 32
+val prints = 3
 
 fun main() {
-    val inputFile = "day19_test.txt"
-    //val inputFile = "day19.txt"
+    //val inputFile = "day19_test.txt"
+    val inputFile = "day19.txt"
     val input = readResourceFile(inputFile)
     val bluePrints = parse(input)
     println(bluePrints)
@@ -15,23 +18,32 @@ fun main() {
     //Step.BuildObsidianRobot, Step.BuildClayRobot, Step.Wait, Step.Wait, Step.BuildObsidianRobot, Step.Wait, Step.Wait, Step.BuildGeodeRobot, Step.Wait, Step.Wait,
     //Step.BuildGeodeRobot, Step.Wait, Step.Wait, Step.Wait), bluePrint = bluePrints[0]))
 
-    var sum = 0
-    for (blueprint in bluePrints) {
-        val (strategy, geods) = findOptimalStrategy(blueprint)
-        // val g = eval(strategy, blueprint)
-        println("Blueprint ${blueprint.id}: $geods")
-        sum += (geods * blueprint.id)
+    if (prints < 0) {
+        var sum = 0
+        for (blueprint in bluePrints) {
+            val (strategy, geods) = findOptimalStrategy(blueprint)
+            // val g = eval(strategy, blueprint)
+            println("Blueprint ${blueprint.id}: $geods")
+            sum += (geods * blueprint.id)
+        }
+        println("Total: $sum")
+    } else {
+        var product = 1
+        for (blueprint in bluePrints.take(prints)) {
+            val (strategy, geods) = findOptimalStrategy(blueprint)
+            // val g = eval(strategy, blueprint)
+            println("Blueprint ${blueprint.id}: $geods")
+            product *= geods
+        }
+        println("Total: $product")
     }
-    println("Total: $sum")
-
 
 }
 
 fun eval(strategy: Strategy, bluePrint: Blueprint): Int {
     // var (ore, clay, obsidian, geode) = List(4) { 0 }
     // var (oreRobots, clayRobots, obsidianRobots, geodeRobots) = listOf(1, 0, 0, 0)
-    assert(strategy.size == 24)
-    var state = State(0, 0, 0, 0, 1, 0, 0, 0, 24, emptyList())
+    var state = State(0, 0, 0, 0, 1, 0, 0, 0, timeSteps, emptyList())
     var m = 1
     for (step in strategy) {
         println("== Minute $m ==")
@@ -40,7 +52,7 @@ fun eval(strategy: Strategy, bluePrint: Blueprint): Int {
         println("State: $newState")
         m += 1
     }
-    return strategy.mapIndexed { i, s -> if (s == Step.BuildGeodeRobot) (24-i-1) else 0}.sum()
+    return strategy.mapIndexed { i, s -> if (s == Step.BuildGeodeRobot) (timeSteps-i-1) else 0}.sum()
 
 }
 
@@ -57,54 +69,42 @@ data class State(
     val steps: Strategy
 )
 
-fun nextSteps(state: State, bluePrint: Blueprint): List<Step> {
+fun nextSteps(state: State, bluePrint: Blueprint, currentMax: Int): List<Step> {
     if (state.remainingTime < 1) return emptyList()
+    if (state.geode + state.geodeRobots * state.remainingTime + (state.remainingTime*state.remainingTime-1)/2 < currentMax) return emptyList()
     return buildSet {
-        var needObsidian = false
-        var needOre = false
-        var needClay = false
+        var needObsidian = bluePrint.geodeRobot.costObsidian
+        var needOre = max(
+            max(bluePrint.geodeRobot.costOre, bluePrint.obsidianRobot.costOre),
+            max(bluePrint.clayRobot.costOre, bluePrint.oreRobot.costOre))
+        var needClay = bluePrint.obsidianRobot.costClay
 
-        if (state.obsidian < bluePrint.geodeRobot.costObsidian) {
-            needObsidian = true
-        }
-        if (state.ore < bluePrint.geodeRobot.costOre) {
-            needOre = true
-        }
-        if (!needOre && !needObsidian){
+
+
+        if (state.obsidian >= bluePrint.geodeRobot.costObsidian && state.ore >= bluePrint.geodeRobot.costOre) {
             add(Step.BuildGeodeRobot)
+        } else {
+            if (state.remainingTime > 2) {
+                if (state.clay >= bluePrint.obsidianRobot.costClay && state.ore >= bluePrint.obsidianRobot.costOre && needObsidian > state.obsidianRobots) {
+                    add(Step.BuildObsidianRobot)
+                }
+                if (state.ore >= bluePrint.clayRobot.costOre && needClay > state.clayRobots) {
+                    if (state.steps.last() != Step.Wait || (state.ore - state.oreRobots) < bluePrint.clayRobot.costOre)
+                        add(Step.BuildClayRobot)
+                }
+                if (state.ore >= bluePrint.oreRobot.costOre && needOre > state.oreRobots) {
+                    if (state.steps.last() != Step.Wait || (state.ore - state.oreRobots) < bluePrint.oreRobot.costOre)
+                        add(Step.BuildOreRobot)
+                }
+            }
+            add(Step.Wait)
         }
 
-        if (needObsidian) {
-            if (state.clay < bluePrint.obsidianRobot.costClay) {
-                needClay = true
-            }
-            if (state.ore < bluePrint.obsidianRobot.costOre) {
-                needOre = true
-            }
-            if (!needClay && !needOre) {
-                add(Step.BuildObsidianRobot)
-            }
-        }
 
-        if (needClay) {
-            if (state.ore < bluePrint.clayRobot.costOre) {
-                needOre = true
-            } else {
-                assert(state.ore >= bluePrint.clayRobot.costOre)
-                add(Step.BuildClayRobot)
-            }
-        }
 
-        if (needOre) {
-            if (state.ore < bluePrint.oreRobot.costOre) {
-                add(Step.Wait)
-            } else {
-                assert(state.ore >= bluePrint.oreRobot.costOre)
-                add(Step.BuildOreRobot)
-            }
-        }
 
-        add(Step.Wait)
+
+
 
     }.toList()
 }
@@ -115,25 +115,19 @@ fun applyStep(state: State, bluePrint: Blueprint, step: Step): State {
     var (oreRobots, clayRobots, obsidianRobots, geodeRobots) = listOf(state.oreRobots, state.clayRobots, state.obsidianRobots, state.geodeRobots)
     when (step) {
         Step.BuildOreRobot -> {
-            assert(state.ore + ore >= bluePrint.oreRobot.costOre)
             ore -= bluePrint.oreRobot.costOre
             oreRobots += 1
         }
         Step.BuildClayRobot -> {
-            assert(state.ore + ore >= bluePrint.clayRobot.costOre)
             ore -= bluePrint.clayRobot.costOre
             clayRobots += 1
         }
         Step.BuildObsidianRobot -> {
-            assert(state.ore + ore >= bluePrint.obsidianRobot.costOre)
-            assert(state.clay + clay >= bluePrint.obsidianRobot.costClay)
             ore -= bluePrint.obsidianRobot.costOre
             clay -= bluePrint.obsidianRobot.costClay
             obsidianRobots += 1
         }
         Step.BuildGeodeRobot -> {
-            assert(state.ore + ore >= bluePrint.geodeRobot.costOre)
-            assert(state.obsidian + obsidian >= bluePrint.geodeRobot.costObsidian)
             ore -= bluePrint.geodeRobot.costOre
             obsidian -= bluePrint.geodeRobot.costObsidian
             geodeRobots += 1
@@ -151,20 +145,17 @@ fun applyStep(state: State, bluePrint: Blueprint, step: Step): State {
         geodeRobots = geodeRobots,
         remainingTime = state.remainingTime - 1,
         steps = state.steps + step
-    ).also {
-        assert(it.ore >= 0)
-        assert(it.clay >= 0)
-        assert(it.obsidian >= 0)
-    }
+    )
 }
 
 fun findOptimalStrategy(bluePrint: Blueprint): Pair<Strategy, Int> {
     var current = State(
         ore = 0, clay = 0, obsidian = 0, geode = 0,
         oreRobots = 1, clayRobots = 0, obsidianRobots = 0, geodeRobots = 0,
-        remainingTime = 24, steps = emptyList())
+        remainingTime = timeSteps, steps = emptyList())
     var optimal = current
     var max = 0
+    var maxAtStep = IntArray(timeSteps+1) { 0 }
     val queue = ArrayDeque<State>()
     val seen = setOf<Strategy>().toMutableSet()
     seen.add(current.steps)
@@ -176,14 +167,20 @@ fun findOptimalStrategy(bluePrint: Blueprint): Pair<Strategy, Int> {
             if (current.geode > max) {
                 max = current.geode
                 optimal = current
-                println("New optimal: ${current.steps}")
+                //println("New optimal: ${current.steps}")
             }
         } else {
-            for (step in nextSteps(current, bluePrint)) {
+            for (step in nextSteps(current, bluePrint, max)) {
                 val newState = applyStep(current, bluePrint, step)
                 if (newState.steps !in seen) {
-                    queue.addLast(applyStep(current, bluePrint, step))
                     seen.add(newState.steps)
+                    if (newState.geode > maxAtStep[newState.remainingTime]) {
+                        maxAtStep[newState.remainingTime] = newState.geode
+                        //println(maxAtStep.joinToString())
+                    }
+                    if (newState.geode > maxAtStep[newState.remainingTime] - 3) {
+                        queue.addLast(applyStep(current, bluePrint, step))
+                    }
                 }
             }
         }
